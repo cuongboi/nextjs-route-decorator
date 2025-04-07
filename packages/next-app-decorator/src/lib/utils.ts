@@ -115,7 +115,7 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
     };
   }
 
-  if (zodSchema instanceof z.ZodArray) {
+  if (zodSchema?._def.typeName === "ZodArray") {
     return {
       type: "array",
       items: zodToOpenAPI(zodSchema._def.type),
@@ -123,10 +123,7 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
     };
   }
 
-  if (
-    zodSchema instanceof z.ZodObject ||
-    zodSchema._def.typeName === "ZodObject"
-  ) {
+  if (zodSchema._def.typeName === "ZodObject") {
     const shape = zodSchema._def.shape();
 
     return {

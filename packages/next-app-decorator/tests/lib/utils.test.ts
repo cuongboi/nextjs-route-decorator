@@ -230,4 +230,46 @@ describe("deepMergeObjects", () => {
       type: "string",
     });
   });
+
+  test("should handle ZodArray as HookResponse = ZodArray", () => {
+    const route = {
+      hook: {
+        response: z.array(z.string()),
+      },
+    };
+
+    const result = zodToOpenAPI(route.hook.response);
+    expect(result).toEqual({
+      type: "array",
+      items: {
+        type: "string",
+      },
+    });
+  });
+
+  test("should handle ZodArray with element is ZodObject", () => {
+    const route = {
+      hook: {
+        response: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+          })
+        ),
+      },
+    };
+
+    const result = zodToOpenAPI(route.hook.response);
+    expect(result).toEqual({
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+        },
+        required: ["id", "name"],
+      },
+    });
+  })
 });

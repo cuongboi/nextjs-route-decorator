@@ -1,4 +1,4 @@
-import { container, DependencyContainer, registry } from "tsyringe";
+import { container as RootContainer, registry } from "tsyringe";
 import { Metadata } from "../metadata";
 import {
   AppRoute,
@@ -15,15 +15,14 @@ import { OpenAPIFactory } from "./OpenApiGenerator.ts";
 
 export class RouterFactory {
   public routes: AppRoute = {};
-  private container: DependencyContainer;
   private requestProcessor: RequestProcessor;
 
   constructor(
-    private module: Function,
-    private config: BaseConfig = {}
+    public module: Function,
+    public config: BaseConfig = {},
+    public container = RootContainer.createChildContainer()
   ) {
-    this.container = container.createChildContainer();
-    this.requestProcessor = new RequestProcessor(this.routes, this.container);
+    this.requestProcessor = new RequestProcessor(this);
   }
 
   static create(module: Function, config: BaseConfig = {}) {

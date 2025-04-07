@@ -1,71 +1,26 @@
-import {
-  Module,
-  Controller,
-  Get,
-  Post,
-  injectable,
-  inject,
-  routerHandler,
-} from "nextjs-route-decorator";
-import { z } from "zod";
+import { RouterFactory } from "nextjs-route-decorator";
+import UserModule from "./user.module";
 
-// Service with dependency injection
-@injectable()
-class TestService {
-  public getHello() {
-    return {
-      message: "Hello, World!",
-    };
-  }
-}
-
-// Controller with routes
-@Controller("/", {
-  name: "Hello World API",
-  description: "Hello World API Description",
-})
-class TestController {
-  constructor(@inject(TestService) private testService: TestService) {}
-
-  @Get("/hello", {
-    response: {
-      200: z.object({
-        message: z.string(),
-      }),
-    },
-  })
-  public getIndex() {
-    return this.testService.getHello();
-  }
-
-  @Post("/hello", {
-    body: z.object({
-      name: z.string(),
-    }),
-    response: {
-      200: z.object({
-        message: z.string().default("Hello, World!"),
-      }),
-    },
-  })
-  postTest() {
-    return { message: "Hello, World!" };
-  }
-}
-
-// Root module
-@Module({
-  controllers: [TestController],
-  prefix: "/api",
-})
-class AppModule {}
-
-export const { GET, POST } = routerHandler(AppModule, {
+export const { GET, POST, PUT, DELETE } = RouterFactory.create(UserModule, {
   swagger: {
     path: "/api/swagger",
     info: {
       title: "NextJS App Router API Documentation",
       version: "1.0.0",
     },
+    servers: [
+      {
+        url: "http://localhost:3000",
+        description: "Local server",
+      },
+      ...(process.env.APP_URL
+        ? [
+            {
+              url: `https://${process.env.APP_URL}`,
+              description: "Vercel server",
+            },
+          ]
+        : []),
+    ],
   },
 });

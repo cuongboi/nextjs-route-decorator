@@ -1,12 +1,11 @@
 import type { constructor } from "tsyringe/dist/typings/types";
-import type { HttpStatus, HttpStatusValue } from "./http-status";
+import type { HttpStatusValue } from "./http-status";
 import type { NextRequest, NextResponse } from "next/server";
 import { METADATA_KEYS } from "./metadata";
 import type { HTTP_METHOD } from "next/dist/server/web/http";
 import type { registry } from "tsyringe";
 import type { ZodTypeAny } from "zod";
-import type { ZodOpenApiObject } from "zod-openapi";
-import { TagObject } from "openapi3-ts/oas30";
+import type { TagObject, OpenAPIObject } from "openapi3-ts/oas30";
 
 type ResultType = string | object | number | void;
 
@@ -41,13 +40,15 @@ export interface ModuleOption {
 
 export type BaseConfig = {
   swagger?: SwaggerConfig;
+  responseInit?: ResponseInit;
+  middlewares?: RouteMiddleware[];
 };
 
 export type SwaggerConfig = {
-  info?: ZodOpenApiObject["info"];
+  info?: OpenAPIObject["info"];
   path: `/${string}`;
   openapi?: "3.0.0";
-} & Omit<ZodOpenApiObject, "info" | "openapi">;
+} & Omit<OpenAPIObject, "info" | "openapi" | "paths">;
 
 // Route Hook Configuration
 
@@ -128,12 +129,12 @@ export type ParamLoader = (
   request: NextRequest,
   hook?: Hook,
   params?: Record<string, string | string[]>
-) => MaybePromise<unknown | void>;
+) => MaybePromise<unknown | undefined>;
 
 export type RouteMiddleware = (
   request: NextRequest,
-  next: typeof NextResponse.next
-) => MaybePromise<void>;
+  init: ResponseInit
+) => MaybePromise<ResponseInit | void>;
 
 export type FactoryConfig = {
   prefix: `/${string}`;

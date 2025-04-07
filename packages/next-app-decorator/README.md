@@ -19,13 +19,24 @@ A TypeScript decorator-based library for creating Next.js App Router API routes 
 npm install zod nextjs-route-decorator
 ```
 
+Then, update your TypeScript configuration (tsconfig.json) to enable experimental decorators:
+
+
+
+```json
+    "compilerOptions": {
+        // ...existing options...
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+    }
+```
+
 ## Usage
 
 Basic Setup with Dependency Injection
 Create an API module with controllers using tsyringe for dependency injection:
 
-```
-
+```typescript
 import {
   Module,
   Controller,
@@ -92,7 +103,7 @@ class AppModule {}
 
 Code in NextJs dynamic routes with Swagger documentation with custom configuration:
 
-```
+```typescript
 // src/app/api/[...params]/route.ts
 export const { GET, POST } = RouterFactory.create(AppModule, {
   swagger: {

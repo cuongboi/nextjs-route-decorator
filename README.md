@@ -1,84 +1,62 @@
-# Turborepo starter
+# NextJS App Router API
 
-This Turborepo starter is maintained by the Turborepo core team.
+## Overview
 
-## Using this example
+This project demonstrates how to build API endpoints using the `nextjs-route-decorator` framework with dependency injection and TypeScript. API routes are defined using decorators in [route.ts](example/src/app/api/[...params]/route.ts), which include both GET and POST endpoints.
 
-Run the following command:
+## Features
 
-```sh
-npx create-turbo@latest
-```
+- **Dependency Injection**: Uses `@injectable` and `@inject` decorators to inject and manage service dependencies.
+- **API Endpoints**:
+  - `GET /api/hello` returns a JSON object with a greeting.
+  - `POST /api/hello` accepts a JSON body (with a `name` field) and returns a JSON greeting.
+- **Swagger Integration**: Interactive API documentation available at `/api/swagger`.
 
-## What's inside?
+## Project Structure
 
-This Turborepo includes the following packages/apps:
+- **API Routes**: Located in [example/src/app/api/[...params]/route.ts](example/src/app/api/[...params]/route.ts).
+- **Service Layer**: The `TestService` class provides business logic for handling API requests.
+- **Controller**: The `TestController` class defines API operations along with route metadata.
 
-### Apps and Packages
+## Setup and Installation
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+1. **Clone the repository:**
+   ```sh
+   git clone <repository-url>
+   ```
+2. **Navigate to the project directory:**
+   ```sh
+   cd <project-folder>
+   ```
+3. **Install dependencies using pnpm:**
+   ```sh
+   pnpm install
+   ```
+4. **Run the development server:**
+   ```sh
+   pnpm dev
+   ```
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## Testing the Endpoints
 
-### Utilities
+- **GET Request:**  
+  Visit [http://localhost:<port>/api/hello](http://localhost:<port>/api/hello) in your browser or use a tool like Postman.
 
-This Turborepo has some additional tools already setup for you:
+- **POST Request:**  
+  Send a POST request to [http://localhost:<port>/api/hello](http://localhost:<port>/api/hello) with the following JSON body:
+  ```json
+  {
+    "name": "Your Name"
+  }
+  ```
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## API Documentation
 
-### Build
+Access the interactive Swagger documentation at: Workspace
+Collecting workspace information
 
-To build all apps and packages, run the following command:
+Filtering to most relevant information
 
-```
-cd my-turborepo
-pnpm build
-```
+Below is an example README content that documents the API endpoints, project structure, and setup instructions for your Next.js project. You can adjust the port numbers and repository URL as needed.
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm dev
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-npx turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
+http://localhost:<port>/api/swagger

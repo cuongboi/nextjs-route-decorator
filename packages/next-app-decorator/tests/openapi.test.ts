@@ -106,6 +106,19 @@ class TestController {
   public index() {
     return this.testService.test();
   }
+
+  @Get("/users", {
+    response: {
+      200: z.object({
+          id: z.string(),
+          name: z.string(),
+        }).array()
+      
+    },
+  })
+  public getUsers() {
+    return [];
+  }
 }
 
 @Module({
@@ -152,4 +165,13 @@ describe("AppModule", () => {
     const response = await app.GET(request);
     expect(response.status).toBe(200);
   });
+
+  test("should return 200 when access users", async () => {
+    const request = new NextRequest(`${apiUrl}/api/users`, {
+      method: "GET",
+    });
+
+    const response = await app.GET(request);
+    expect(response.status).toBe(200);
+  })
 });

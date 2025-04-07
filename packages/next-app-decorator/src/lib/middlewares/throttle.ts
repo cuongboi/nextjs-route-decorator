@@ -1,11 +1,7 @@
-import {
-  createControllerMiddlewareDecorator,
-  createMethodMiddlewareDecorator,
-} from "./generator";
+import { createControllerMiddlewareDecorator } from "../decorators/generator";
 import { LRUCache } from "lru-cache";
 import { HttpStatusCode } from "../http-status";
 import { BaseError } from "../error";
-import { LoggerService, LogLevel } from "../logger";
 
 /**
  * Sample Controller middleware
@@ -23,7 +19,7 @@ export const Throttle = (
     noUpdateTTL: true,
   });
 
-  return createControllerMiddlewareDecorator((req) => {
+  return createControllerMiddlewareDecorator((req, next) => {
     const ip =
       req.headers.get("x-forwarded-for") ||
       req.headers.get("x-real-ip") ||
@@ -36,24 +32,5 @@ export const Throttle = (
     }
 
     cache.set(ip, count + 1);
-  });
-};
-
-/**
- * Sample Method middleware
- * Logging middleware - logs request method and URL by Timestamp
- */
-export const Logger = (level: LogLevel) => {
-  if (!Object.values(LogLevel).includes(level)) {
-    throw new BaseError("Invalid log level", HttpStatusCode.BadRequest);
-  }
-
-  const logger = new LoggerService({ level });
-
-  return createMethodMiddlewareDecorator(async (req) => {
-    const method = req.method;
-    const url = req.url;
-
-    logger.debug(`${method} ${url}`);
   });
 };

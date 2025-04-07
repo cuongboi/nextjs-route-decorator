@@ -1,17 +1,17 @@
-import type { DependencyContainer, InjectionToken } from "tsyringe";
+import type { InjectionToken } from "tsyringe";
 import { Metadata } from "../metadata";
-import { AppRoute, RouteHandler, RouteMiddleware } from "../types";
+import { RouteHandler, RouteMiddleware } from "../types";
 import { NextRequest, NextResponse } from "next/server";
 import { match } from "path-to-regexp";
 import { BaseError, MethodNotAllowedError } from "../error";
 import { z } from "zod";
-import { RouteMatcher } from "./Matcher";
+import { RouteMatcher } from "./RouteMatcher";
+import { deepMergeObjects } from "../utils";
+import { RouterFactory } from "./RouterFactory";
+import { HttpStatusCode } from "../http-status";
 
 export class RequestProcessor {
-  constructor(
-    private routes: AppRoute,
-    private container: DependencyContainer
-  ) {}
+  constructor(private factory: RouterFactory) {}
 
   async resolveArgs(
     request: NextRequest,
@@ -32,26 +32,33 @@ export class RequestProcessor {
     return Object.values(paramsObject);
   }
 
-  async resolveMiddleware(
+  async resolveRouteMiddleware(
     request: NextRequest,
     target: Object | Function,
     methodName: string | symbol
-  ): Promise<void> {
+  ): Promise<ResponseInit> {
     const middlewares: RouteMiddleware[] = [
       ...(Metadata.get("controllerMiddleware", target as Function) ?? []),
       ...(Metadata.get("methodMiddleware", target as Function, methodName) ??
         []),
     ];
 
-    for (const middleware of middlewares) {
-      await middleware(request, NextResponse.next);
-    }
+    return this.resolveMiddleware(request, middlewares);
   }
 
   async processRequest(request: NextRequest): Promise<Response> {
+    let responseInit: ResponseInit = this.factory.config.responseInit ?? {};
+
+    if (this.factory.config.middlewares) {
+      responseInit = await this.resolveMiddleware(
+        request,
+        this.factory.config.middlewares
+      );
+    }
+
     try {
       const routes = RouteMatcher.findRoute(
-        this.routes,
+        this.factory.routes,
         request.nextUrl.pathname
       );
 
@@ -67,7 +74,13 @@ export class RequestProcessor {
         return NextResponse.json(await Promise.resolve(route.handler(request)));
       }
 
-      await this.resolveMiddleware(request, route.target, route.methodName);
+      responseInit = deepMergeObjects(
+        responseInit,
+        await this.resolveRouteMiddleware(
+          request,
+          route.target,
+          route.methodName
+        ));
 
       const { params } = match(String(route.matchPath))(
         request.nextUrl.pathname
@@ -82,7 +95,7 @@ export class RequestProcessor {
         : null;
       if (beforeResult instanceof Response) return beforeResult;
 
-      const instance = this.container.resolve(
+      const instance = this.factory.container.resolve(
         route.target as InjectionToken<typeof route.target>
       );
 
@@ -98,34 +111,66 @@ export class RequestProcessor {
       const statusCode: number =
         Metadata.get("statusCode", route.target, route.methodName) ?? 200;
 
+
       return result instanceof Response
         ? result
-        : NextResponse.json(result, {
-            status: statusCode,
-            headers: {
-              "content-type":
-                route.hook.info?.produces?.at(0) ?? "application/json",
-            },
-          });
+        : NextResponse.json(
+            result,
+            deepMergeObjects(responseInit, {
+              status: statusCode,
+              headers: {
+                "content-type":
+                  route.hook.info?.produces?.at(0) ?? "application/json",
+              },
+            })
+          );
     } catch (err) {
-      return this.handleError(err);
+      return this.handleError(err, responseInit);
     }
   }
 
-  private handleError(err: unknown): NextResponse {
+  private handleError(err: unknown, init: ResponseInit): NextResponse {
     if (process.env.NODE_ENV === "development") console.log(err);
 
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: err.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: err.issues },
+        deepMergeObjects(init, { status: HttpStatusCode.BadRequest })
+      );
     }
 
     if (err instanceof BaseError) {
-      return NextResponse.json({ error: err.message }, { status: err.code });
+      return NextResponse.json(
+        { error: err.message },
+        deepMergeObjects(init, { status: err.code })
+      );
     }
 
     return NextResponse.json(
       { error: (err as Error).message },
-      { status: 500 }
+      deepMergeObjects(init, { status: HttpStatusCode.InternalServerError })
     );
+  }
+
+  private async resolveMiddleware(
+    request: NextRequest,
+    middlewares: RouteMiddleware[],
+    init?: ResponseInit
+  ): Promise<ResponseInit> {
+    let responseInit: ResponseInit =
+      init ?? this.factory.config.responseInit ?? {};
+
+    for (const middleware of middlewares) {
+      const middlewareResolved = await Promise.resolve(
+        middleware(request, responseInit)
+      );
+
+      responseInit = deepMergeObjects(
+        responseInit,
+        middlewareResolved ?? {}
+      );
+    }
+
+    return responseInit;
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "nextjs-route-decorator",
   "description": "A decorator for Next.js API routes",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "keywords": [
     "nextjs",
     "typescript",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cuongboi/nextjs-route-decorator"
+    "url": "git+https://github.com/cuongboi/nextjs-route-decorator.git"
   },
   "license": "MIT",
   "module": "./dist/index.mjs",
@@ -36,7 +36,7 @@
     "test": "jest",
     "test:cov": "jest --collectCoverage ",
     "prepack": "pnpm test && pnpm build",
-    "release": "npm version patch && git push origin main --tags && npm publish --access public"
+    "release": "npm version patch --no-git-checks && npm publish --access public"
   },
   "devDependencies": {
     "@scalar/nextjs-api-reference": "^0.7.7",
@@ -48,8 +48,7 @@
     "path-to-regexp": "^8.2.0",
     "pkgroll": "^2.11.2",
     "tosource": "2.0.0-alpha.3",
-    "ts-jest": "^29.3.1",
-    "zod-openapi": "^4.2.4"
+    "ts-jest": "^29.3.1"
   },
   "peerDependencies": {
     "next": "^15",

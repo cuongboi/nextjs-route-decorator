@@ -5,13 +5,14 @@ import {
   ParameterObject,
   PathItemObject,
   ResponsesObject,
+  TagObject,
 } from "openapi3-ts/oas30";
 import { z } from "zod";
 import { AppRoute, SwaggerConfig } from "../types";
 import { deepMergeObjects, zodToOpenAPI } from "../utils";
 import { RouterFactory } from "./RouterFactory";
 import { Metadata } from "../metadata";
-import { TagObject } from "node_modules/zod-openapi/dist/openapi3-ts/dist/oas30";
+import { HttpStatusCode } from "../http-status";
 
 export class OpenAPIFactory {
   private builder: OpenApiBuilder;
@@ -68,7 +69,6 @@ export class OpenAPIFactory {
   }
 
   private processRoutes(): OpenAPIFactory {
-    this.addBadRequestResponseComponent();
     const tags = new Set<TagObject>();
 
     Object.entries(this.routes).forEach(([path, methods]) => {
@@ -77,7 +77,7 @@ export class OpenAPIFactory {
       Object.entries(methods).forEach(([method, routeConfig]) => {
         const operation: OperationObject = {
           parameters: [],
-          responses: {},
+          responses: this.addInternalServerErrorResponse(),
         };
 
         const [_, tagInfo] = Metadata.get("prefix", routeConfig.target) ?? [];
@@ -172,7 +172,7 @@ export class OpenAPIFactory {
         if (routeConfig.hook.response) {
           if (routeConfig.hook.response instanceof z.ZodObject) {
             operation.responses = deepMergeObjects(operation.responses ?? {}, {
-              200: {
+              [HttpStatusCode.Ok]: {
                 description: "Successful response",
                 content: {
                   "application/json": {
@@ -259,7 +259,7 @@ export class OpenAPIFactory {
     return this;
   }
 
-  private addBadRequestResponseComponent() {
+  private setupDefaultErrorResponse() {
     const ErrorDetailSchema = z.object({
       code: z.string(),
       expected: z.string().optional(),
@@ -272,7 +272,7 @@ export class OpenAPIFactory {
       error: z.array(ErrorDetailSchema),
     });
 
-    const response = {
+    let response = {
       description: "Bad Request",
       content: {
         "application/json": {
@@ -282,14 +282,37 @@ export class OpenAPIFactory {
     };
 
     this.builder.addResponse("BadRequest", response);
+
+    response = {
+      description: "Internal Server Error",
+      content: {
+        "application/json": {
+          schema: zodToOpenAPI(z.object({ error: z.string() })),
+        },
+      },
+    };
+
+    this.builder.addResponse("InternalServerError", response);
+
+    return this;
   }
 
   private addBadRequestResponse(
     responses: ResponsesObject = {}
   ): ResponsesObject {
     return deepMergeObjects(responses ?? {}, {
-      400: {
+      [HttpStatusCode.BadRequest]: {
         $ref: "#/components/responses/BadRequest",
+      },
+    });
+  }
+
+  private addInternalServerErrorResponse(
+    responses: ResponsesObject = {}
+  ): ResponsesObject {
+    return deepMergeObjects(responses ?? {}, {
+      [HttpStatusCode.InternalServerError]: {
+        $ref: "#/components/responses/InternalServerError",
       },
     });
   }
@@ -299,6 +322,7 @@ export class OpenAPIFactory {
       .addServers()
       .addTags()
       .addSecurityDefinitions()
+      .setupDefaultErrorResponse()
       .processRoutes();
   }
 

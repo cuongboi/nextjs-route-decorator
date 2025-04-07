@@ -16,6 +16,7 @@ import {
   Req,
   Params,
   Headers,
+  Cors,
 } from "../src";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
@@ -127,7 +128,13 @@ describe("AppModule", () => {
   let app: RouteResult;
 
   beforeAll(async () => {
-    app = await RouterFactory.create(AppModule);
+    app = await RouterFactory.create(AppModule, {
+      middlewares: [
+        Cors({
+          allowedOrigins: ["http://localhost:3000", [apiUrl]],
+        }),
+      ],
+    });
   });
 
   test("should be error 404", async () => {
@@ -176,7 +183,7 @@ describe("AppModule", () => {
     expect(response.status).toBe(400);
 
     const json = await response.json();
-    console.log(json);
+    expect(json).toHaveProperty("error");
   });
 
   test("should be response 200 for POST method", async () => {
@@ -276,5 +283,24 @@ describe("AppModule", () => {
     const response = await app.GET(request);
     expect(response.status).toBe(200);
     expect(await response.json()).toBe("test");
+  });
+
+  // Test cors response header
+  test("should return CORS headers", async () => {
+    const request = new NextRequest(`${apiUrl}/api/test2`, {
+      method: "GET",
+      headers: {
+        Origin: "http://localhost:3000",
+      },
+    });
+
+    const response = await app.GET(request);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000"
+    );
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
   });
 });
