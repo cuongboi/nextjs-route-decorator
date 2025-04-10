@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Body,
-  StatusCode,
   Get,
   inject,
   Param,
@@ -32,6 +31,7 @@ export class UserController {
     },
   })
   async getUsers() {
+    throw new Error("Not implemented");
     const users = await this.userService.getUsers();
     return users;
   }
@@ -39,6 +39,9 @@ export class UserController {
   @Get("/:id", {
     response: {
       200: User,
+      404: z.object({
+        message: z.string().default("User not found"),
+      }),
     },
   })
   async getUserById(@Param("id") id: string) {
@@ -57,8 +60,8 @@ export class UserController {
         message: z.string(),
       }),
     },
+    status: 201,
   })
-  @StatusCode(201)
   async register(@Body body: RegisterUser) {
     this.userService.registerUser(body);
 
@@ -93,6 +96,9 @@ export class UserController {
       200: z.object({
         success: z.boolean(),
         message: z.string(),
+      }),
+      404: z.object({
+        message: z.string().default("User not found"),
       }),
     },
   })

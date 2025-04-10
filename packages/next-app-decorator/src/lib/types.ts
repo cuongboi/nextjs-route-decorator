@@ -1,17 +1,20 @@
-import type { constructor } from "tsyringe/dist/typings/types";
+import type { RegistrationOptions } from "tsyringe/dist/typings/types";
 import type { HttpStatusValue } from "./http-status";
 import type { NextRequest, NextResponse } from "next/server";
 import { METADATA_KEYS } from "./metadata";
 import type { HTTP_METHOD } from "next/dist/server/web/http";
-import type { registry } from "tsyringe";
-import type { ZodTypeAny } from "zod";
+import type { InjectionToken, Provider } from "tsyringe";
+import type { TypeOf, ZodTypeAny } from "zod";
 import type { TagObject, OpenAPIObject } from "openapi3-ts/oas30";
 
 type ResultType = string | object | number | void;
 
 export type AnyFunction = (...args: any[]) => ResultType | Promise<ResultType>;
 
-export type ModuleRegistry = Parameters<typeof registry>[0];
+export type ModuleRegistry = {
+  token: InjectionToken;
+  options?: RegistrationOptions;
+} & Provider<any>;
 
 export type MaybePromise<T> = T | Promise<T>;
 
@@ -29,12 +32,10 @@ export type MetadataValue<T extends MetadataKey> = T extends "module"
           ? RouteMiddleware[]
           : any | any[];
 
-export type ModuleOptionRegistry = ModuleRegistry | constructor<unknown>;
-
 export interface ModuleOption {
   controllers?: Array<Function>;
   imports?: Array<Function>;
-  registry?: Array<ModuleOptionRegistry>;
+  registry?: ModuleRegistry[];
   prefix?: `/${string}`;
 }
 
@@ -72,7 +73,37 @@ export type HookResponse =
         ))
     >;
 
-export type Hook = {
+type ConvertHookResponseDetail<V> = V extends ZodTypeAny
+  ? TypeOf<V>
+  : V extends { schema: infer S }
+    ? S extends ZodTypeAny
+      ? TypeOf<S>
+      : unknown
+    : V extends { content: infer C }
+      ? C extends Record<string, { schema: infer S }>
+        ? S extends ZodTypeAny
+          ? TypeOf<S>
+          : unknown
+        : unknown
+      : unknown;
+
+export type ConvertHookResponse<T extends HookResponse> = T extends ZodTypeAny
+  ? TypeOf<T>
+  : T extends Record<number, infer V>
+    ? ConvertHookResponseDetail<V>
+    : unknown;
+
+type HookBody =
+  | {
+      body?: ZodTypeAny;
+      formData?: never;
+    }
+  | {
+      formData?: ZodTypeAny;
+      body?: never;
+    };
+
+export type Hook = HookBody & {
   status?: HttpStatusValue;
   contentType?: string;
   path?: ZodTypeAny;
@@ -80,16 +111,15 @@ export type Hook = {
   headers?: ZodTypeAny;
   cookies?: ZodTypeAny;
   response?: HookResponse;
-  body?: ZodTypeAny;
-  formData?: ZodTypeAny;
   before?: (
     request: NextRequest,
-    next?: typeof NextResponse.next
-  ) => MaybePromise<unknown>;
+    init?: ResponseInit
+  ) => MaybePromise<NextResponse<unknown> | ResponseInit>;
   after?: (
     request: NextRequest,
-    responseData?: ResultType
-  ) => MaybePromise<NextResponse<unknown>>;
+    responseData?: ResultType,
+    init?: ResponseInit
+  ) => MaybePromise<NextResponse<unknown> | ResponseInit>;
   info?: {
     id: string;
     summary: string;
@@ -102,10 +132,7 @@ export type Hook = {
   security?: {
     [key: string]: string[];
   };
-} & (
-  | { body?: ZodTypeAny; formData?: never }
-  | { formData?: ZodTypeAny; body?: never }
-);
+};
 
 export type AppRoute = Record<`/${string}`, MethodRoute>;
 
@@ -135,8 +162,3 @@ export type RouteMiddleware = (
   request: NextRequest,
   init: ResponseInit
 ) => MaybePromise<ResponseInit | void>;
-
-export type FactoryConfig = {
-  prefix: `/${string}`;
-  registry: ModuleRegistry[];
-};

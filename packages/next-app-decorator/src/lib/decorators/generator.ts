@@ -3,16 +3,35 @@ import { Metadata } from "../metadata";
 import {
   AnyFunction,
   AppRoute,
+  ConvertHookResponse,
   Hook,
+  HookResponse,
+  MaybePromise,
   ParamLoader,
   RouteMiddleware,
 } from "../types";
+import type { NextResponse } from "next/server";
 
 export const createRouteDecorator = <const Method extends HTTP_METHOD>(
   method: Method
 ) => {
-  return <const Path extends `/${string}`>(path: Path, hook?: Hook) =>
-    (target, methodName, descriptor) => {
+  return <
+      const Path extends `/${string}`,
+      RouteHook extends Hook,
+      Handle extends (
+        ...args: any[]
+      ) => MaybePromise<
+        RouteHook["response"] extends HookResponse
+          ?
+              | ConvertHookResponse<RouteHook["response"]>
+              | NextResponse<ConvertHookResponse<RouteHook["response"]>>
+          : unknown
+      >,
+    >(
+      path: Path,
+      hook?: RouteHook
+    ) =>
+    (target, methodName, descriptor): TypedPropertyDescriptor<Handle> => {
       const route = {
         [path]: {
           [method]: {

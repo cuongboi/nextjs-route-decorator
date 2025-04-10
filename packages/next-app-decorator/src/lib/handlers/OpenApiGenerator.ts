@@ -5,6 +5,7 @@ import {
   ParameterObject,
   PathItemObject,
   ResponsesObject,
+  SchemaObject,
   TagObject,
 } from "openapi3-ts/oas30";
 import { z } from "zod";
@@ -170,13 +171,24 @@ export class OpenAPIFactory {
         }
 
         if (routeConfig.hook.response) {
-          if (routeConfig.hook.response instanceof z.ZodObject) {
+          if (Object.hasOwn(routeConfig.hook.response, "_def")) {
+            const statusCode: number =
+              Metadata.get(
+                "statusCode",
+                routeConfig.target,
+                routeConfig.methodName
+              ) ??
+              routeConfig.hook.status ??
+              HttpStatusCode.Ok;
+
             operation.responses = deepMergeObjects(operation.responses ?? {}, {
-              [HttpStatusCode.Ok]: {
+              [statusCode]: {
                 description: "Successful response",
                 content: {
                   "application/json": {
-                    schema: zodToOpenAPI(routeConfig.hook.response),
+                    schema: this.responseOpenAPI(
+                      zodToOpenAPI(routeConfig.hook.response as z.ZodTypeAny)
+                    ),
                   },
                 },
               },
@@ -187,10 +199,14 @@ export class OpenAPIFactory {
               Object.entries(routeConfig.hook.response).reduce(
                 (acc, [statusCode, schema]) => {
                   acc[statusCode] = {
-                    description: `Response for status code ${statusCode}`,
+                    description: HttpStatusCode[Number(statusCode)]
+                      ? HttpStatusCode[Number(statusCode)]
+                          .replace(/([A-Z])/g, " $1")
+                          .trim()
+                      : "Successful response",
                     content: {
                       "application/json": {
-                        schema: zodToOpenAPI(schema),
+                        schema: this.responseOpenAPI(zodToOpenAPI(schema)),
                       },
                     },
                   };
@@ -211,7 +227,7 @@ export class OpenAPIFactory {
                         description,
                         content: {
                           "application/json": {
-                            schema: zodToOpenAPI(schema),
+                            schema: this.responseOpenAPI(zodToOpenAPI(schema)),
                           },
                         },
                       }
@@ -221,7 +237,9 @@ export class OpenAPIFactory {
                           // @ts-expect-error type schema hack
                           (acc, [contentType, { schema, example }]) => {
                             acc[contentType] = {
-                              schema: zodToOpenAPI(schema),
+                              schema: this.responseOpenAPI(
+                                zodToOpenAPI(schema)
+                              ),
                               example,
                             };
                             return acc;
@@ -287,7 +305,9 @@ export class OpenAPIFactory {
       description: "Internal Server Error",
       content: {
         "application/json": {
-          schema: zodToOpenAPI(z.object({ error: z.string() })),
+          schema: this.responseOpenAPI(
+            zodToOpenAPI(z.object({ error: z.string() }))
+          ),
         },
       },
     };
@@ -315,6 +335,35 @@ export class OpenAPIFactory {
         $ref: "#/components/responses/InternalServerError",
       },
     });
+  }
+
+  private responseOpenAPI<T extends SchemaObject>(schema: T): T {
+    const newSchema = { ...schema };
+    function processSchema(obj) {
+      if (obj.hasOwnProperty("required")) {
+        delete obj.required;
+      }
+
+      if (obj.properties && typeof obj.properties === "object") {
+        Object.values(obj.properties).forEach((prop) => {
+          processSchema(prop);
+        });
+      }
+
+      if (obj.items && typeof obj.items === "object") {
+        processSchema(obj.items);
+      }
+
+      if (
+        obj.additionalProperties &&
+        typeof obj.additionalProperties === "object"
+      ) {
+        processSchema(obj.additionalProperties);
+      }
+    }
+
+    processSchema(newSchema);
+    return newSchema;
   }
 
   public build(): OpenAPIFactory {

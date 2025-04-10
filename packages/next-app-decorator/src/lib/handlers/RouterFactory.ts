@@ -1,12 +1,6 @@
 import { container as RootContainer, registry } from "tsyringe";
 import { Metadata } from "../metadata";
-import {
-  AppRoute,
-  BaseConfig,
-  ModuleOptionRegistry,
-  ModuleRegistry,
-  RouteResult,
-} from "../types";
+import { AppRoute, BaseConfig, ModuleRegistry, RouteResult } from "../types";
 import { deepMergeObjects, joinPath } from "../utils";
 import { HTTP_METHODS } from "next/dist/server/web/http";
 
@@ -39,18 +33,12 @@ export class RouterFactory {
   private loadRoutes(
     target: Function,
     prefix: `/${string}` = "/",
-    moduleRegistry: ModuleOptionRegistry[] = []
+    moduleRegistry: ModuleRegistry[] = []
   ) {
     const routesMeta = Metadata.get("route", target);
     if (!routesMeta) return;
 
-    const registries = moduleRegistry.map((provider) =>
-      Object.getOwnPropertyDescriptor(provider, "constructor")
-        ? { token: Symbol(String(provider)), useClass: provider }
-        : provider
-    ) as ModuleRegistry;
-
-    registry(registries)(this.container);
+    registry(moduleRegistry)(this.container);
     prefix = joinPath(prefix, Metadata.get("prefix", target)?.[0] ?? "/");
 
     for (const [path, methods] of Object.entries(routesMeta)) {
@@ -71,15 +59,13 @@ export class RouterFactory {
   private loadModule(
     module?: Function,
     prefix: `/${string}` = "/",
-    registry: ModuleOptionRegistry[] = []
+    registry: ModuleRegistry[] = []
   ) {
     const moduleMeta = Metadata.get("module", module ?? this.module);
     if (!moduleMeta) return;
 
     prefix = joinPath(prefix, moduleMeta.prefix ?? "/");
-    registry = registry.concat(
-      moduleMeta.registry ?? []
-    ) as ModuleOptionRegistry[];
+    registry = registry.concat(moduleMeta.registry ?? []);
 
     [...(moduleMeta.imports ?? []), ...(moduleMeta.controllers ?? [])].forEach(
       (cur) => {
