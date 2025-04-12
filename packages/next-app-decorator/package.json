@@ -1,7 +1,7 @@
 {
   "name": "nextjs-route-decorator",
   "description": "A decorator for Next.js API routes",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "keywords": [
     "nextjs",
     "typescript",

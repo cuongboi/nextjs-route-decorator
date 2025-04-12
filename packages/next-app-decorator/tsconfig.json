@@ -30,6 +30,6 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts", "src/lib/handlers/OpenApiGenerator.ts.txt2"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "tests", "jest.config.ts"]
 }

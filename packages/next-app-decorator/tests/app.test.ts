@@ -42,11 +42,13 @@ class AppService {
 class AppController {
   constructor(@inject(AppService) private appService: AnyService) {}
 
+  @Logger(LogLevel.WARN)
   @Get("/")
   public index() {
     return this.appService.getHello();
   }
 
+  @Logger(LogLevel.INFO)
   @Get("/:param", {
     path: z.object({
       param: z.coerce.number().transform(Number),
@@ -56,6 +58,7 @@ class AppController {
     return NextResponse.json(`Hello, World ${param}!`);
   }
 
+  @Logger(LogLevel.ERROR)
   @Get("/query", {
     query: z.object({
       name: z.string().min(1),

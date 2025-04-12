@@ -282,7 +282,7 @@ export class OpenAPIFactory {
       code: z.string(),
       expected: z.string().optional(),
       received: z.string().optional(),
-      path: z.array(z.any()).optional(),
+      path: z.array(z.string()).optional(),
       message: z.string().optional(),
     });
 
