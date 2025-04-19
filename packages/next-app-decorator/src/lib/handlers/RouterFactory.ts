@@ -1,6 +1,12 @@
 import { container as RootContainer, registry } from "tsyringe";
 import { Metadata } from "../metadata";
-import { AppRoute, BaseConfig, ModuleRegistry, RouteResult } from "../types";
+import {
+  AppRoute,
+  BaseConfig,
+  ModuleRegistry,
+  RequestRegistry,
+  RouteResult,
+} from "../types";
 import { deepMergeObjects, joinPath } from "../utils";
 import { HTTP_METHODS } from "next/dist/server/web/http";
 
@@ -33,7 +39,8 @@ export class RouterFactory {
   private loadRoutes(
     target: Function,
     prefix: `/${string}` = "/",
-    moduleRegistry: ModuleRegistry[] = []
+    moduleRegistry: ModuleRegistry[] = [],
+    requestRegistry: RequestRegistry[] = []
   ) {
     const routesMeta = Metadata.get("route", target);
     if (!routesMeta) return;
@@ -49,6 +56,7 @@ export class RouterFactory {
             [method]: {
               ...config,
               matchPath,
+              requestRegistry,
             },
           },
         } as AppRoute);
@@ -59,18 +67,20 @@ export class RouterFactory {
   private loadModule(
     module?: Function,
     prefix: `/${string}` = "/",
-    registry: ModuleRegistry[] = []
+    registry: ModuleRegistry[] = [],
+    requestRegistry: RequestRegistry[] = []
   ) {
     const moduleMeta = Metadata.get("module", module ?? this.module);
     if (!moduleMeta) return;
 
     prefix = joinPath(prefix, moduleMeta.prefix ?? "/");
     registry = registry.concat(moduleMeta.registry ?? []);
+    requestRegistry = requestRegistry.concat(moduleMeta.requestRegistry ?? []);
 
     [...(moduleMeta.imports ?? []), ...(moduleMeta.controllers ?? [])].forEach(
       (cur) => {
-        this.loadModule(cur, prefix, registry);
-        this.loadRoutes(cur, prefix, registry);
+        this.loadModule(cur, prefix, registry, requestRegistry);
+        this.loadRoutes(cur, prefix, registry, requestRegistry);
       }
     );
   }

@@ -432,8 +432,7 @@ it("should handle unsupported schemas with fallback", () => {
   const schema = z.unknown().describe("An unknown field");
   const result = zodToOpenAPI(schema);
   expect(result).toEqual({
-    type: "object",
-    additionalProperties: true,
+    type: "string",
     description: "An unknown field",
   });
 });

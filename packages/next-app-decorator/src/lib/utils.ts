@@ -78,27 +78,50 @@ export const purify = (input: string | File) => {
   return input;
 };
 
+declare module "zod" {
+  export interface ZodType {
+    describe(description: string | object): this;
+  }
+}
+
 const getBaseProps = (schema: z.ZodTypeAny) => ({
-  ...(schema._def.description && { description: schema._def.description }),
-  ...(schema instanceof z.ZodDefault && {
+  ...(schema._def.description &&
+    typeof schema._def.description === "string" && {
+      description: schema._def.description,
+    }),
+  ...(schema._def.typeName === "ZodDefault" && {
     example: schema._def.defaultValue(),
   }),
 });
 
 export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
+  if (!zodSchema?._def) {
+    return zodSchema as unknown as SchemaObject;
+  }
+
   const baseProps = getBaseProps(zodSchema);
 
-  if (zodSchema instanceof z.ZodDefault) {
+  if (
+    zodSchema._def.description &&
+    typeof zodSchema._def.description === "object"
+  ) {
+    return {
+      ...baseProps,
+      ...(zodSchema._def.description as SchemaObject),
+    };
+  }
+
+  if (zodSchema._def.typeName === "ZodDefault") {
     const innerSchema = zodToOpenAPI(zodSchema._def.innerType);
     return { ...innerSchema, ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodEffects) {
+  if (zodSchema._def.typeName === "ZodEffects") {
     const innerSchema = zodToOpenAPI(zodSchema._def.schema);
     return { ...innerSchema, ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodString) {
+  if (zodSchema._def.typeName === "ZodString") {
     const schema: any = { type: "string" };
     const checks = zodSchema._def.checks || [];
     for (const check of checks) {
@@ -133,7 +156,6 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
         case "base64":
           schema.format = "byte";
           break;
-
         default:
           schema.format = check.kind;
       }
@@ -141,7 +163,7 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
     return { ...schema, ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodNumber) {
+  if (zodSchema._def.typeName === "ZodNumber") {
     const schema: any = { type: "number" };
     const checks = zodSchema._def.checks || [];
     for (const check of checks) {
@@ -169,15 +191,15 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
     return { ...schema, ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodDate) {
+  if (zodSchema._def.typeName === "ZodDate") {
     return { type: "string", format: "date-time", ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodBoolean) {
+  if (zodSchema._def.typeName === "ZodBoolean") {
     return { type: "boolean", ...baseProps };
   }
 
-  if (zodSchema?._def.typeName === "ZodArray") {
+  if (zodSchema._def.typeName === "ZodArray") {
     return {
       type: "array",
       items: zodToOpenAPI(zodSchema._def.type),
@@ -195,8 +217,8 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
       properties[key] = zodToOpenAPI(fieldSchema);
       if (
         !(
-          fieldSchema instanceof z.ZodOptional ||
-          fieldSchema instanceof z.ZodNullable
+          fieldSchema._def.typeName === "ZodOptional" ||
+          fieldSchema._def.typeName === "ZodNullable"
         )
       ) {
         required.push(key);
@@ -211,20 +233,20 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
     };
   }
 
-  if (zodSchema instanceof z.ZodOptional) {
+  if (zodSchema._def.typeName === "ZodOptional") {
     return zodToOpenAPI(zodSchema._def.innerType);
   }
 
-  if (zodSchema instanceof z.ZodNullable) {
+  if (zodSchema._def.typeName === "ZodNullable") {
     const innerSchema = zodToOpenAPI(zodSchema._def.innerType);
     return { ...innerSchema, nullable: true, ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodEnum) {
+  if (zodSchema._def.typeName === "ZodEnum") {
     return { type: "string", enum: zodSchema._def.values, ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodLiteral) {
+  if (zodSchema._def.typeName === "ZodLiteral") {
     const value = zodSchema._def.value;
     const type =
       typeof value === "string"
@@ -235,18 +257,18 @@ export function zodToOpenAPI(zodSchema: z.ZodTypeAny): SchemaObject {
     return { type, enum: [value], ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodUnion) {
+  if (zodSchema._def.typeName === "ZodUnion") {
     const options = zodSchema._def.options.map((option: z.ZodTypeAny) =>
       zodToOpenAPI(option)
     );
     return { anyOf: options, ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodNull) {
+  if (zodSchema._def.typeName === "ZodNull") {
     return { type: "null", ...baseProps };
   }
 
-  if (zodSchema instanceof z.ZodAny) {
+  if (["ZodAny", "ZodRecord"].includes(zodSchema._def.typeName)) {
     return { type: "object", additionalProperties: true, ...baseProps };
   }
 

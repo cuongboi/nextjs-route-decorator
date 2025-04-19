@@ -57,7 +57,7 @@ export class UserController {
     response: {
       201: z.object({
         success: z.boolean(),
-        message: z.string(),
+        message: z.string().uuid(),
       }),
     },
     status: 201,

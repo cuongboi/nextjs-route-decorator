@@ -64,10 +64,6 @@ export class RequestProcessor {
   }
 
   private handleError(err: unknown, init: ResponseInit): NextResponse {
-    if (process.env.NODE_ENV === "development") {
-      console.error(`\x1b[31m[${this.constructor.name}]\x1b[0m`, err);
-    }
-
     if (err instanceof z.ZodError) {
       return NextResponse.json(
         { error: err.issues },
@@ -81,6 +77,8 @@ export class RequestProcessor {
         deepMergeObjects(init, { status: err.code })
       );
     }
+
+    console.error(`\x1b[31m[${this.constructor.name}]\x1b[0m`, err);
 
     return NextResponse.json(
       { error: (err as Error).message },
@@ -130,6 +128,20 @@ export class RequestProcessor {
       ) as {
         params: Record<string, string | string[]>;
       };
+
+      for await (const registry of route.requestRegistry ?? []) {
+        try {
+          if (!this.factory.container.isRegistered(registry.token, true)) {
+            const useValue = await registry.loader(request);
+            this.factory.container.register(registry.token, { useValue });
+          }
+        } catch {
+          console.warn(
+            `\x1b[33m[${this.constructor.name}]\x1b[0m`,
+            `Error loading registry ${String(registry.token)}`
+          );
+        }
+      }
 
       const instance = this.factory.container.resolve(
         route.target as InjectionToken<typeof route.target>

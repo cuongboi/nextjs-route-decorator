@@ -99,7 +99,13 @@ class TestService {
 
 @Controller("/test2")
 class Test2Controller {
-  constructor(@inject(TestService) private testService: TestService) {}
+  constructor(
+    @inject(TestService) private testService: TestService,
+    @inject("testRequestRegistry")
+    private testRequestRegistry: {
+      method: string;
+    }
+  ) {}
 
   @Get("/", {
     response: {
@@ -110,6 +116,11 @@ class Test2Controller {
   })
   public index() {
     return this.testService.test();
+  }
+
+  @Get("/test-request-registry")
+  public testRequestRegistryHandler() {
+    return this.testRequestRegistry;
   }
 }
 
@@ -124,6 +135,14 @@ class ControllerAppModule {}
   imports: [ControllerAppModule],
   controllers: [Test2Controller],
   prefix: "/api",
+  requestRegistry: [
+    {
+      token: "testRequestRegistry",
+      loader: () => ({
+        method: "GET",
+      }),
+    },
+  ],
 })
 class AppModule {}
 
@@ -305,5 +324,20 @@ describe("AppModule", () => {
     expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
       "GET, POST, PUT, DELETE, OPTIONS"
     );
+  });
+
+  test("should return requestRegistry", async () => {
+    process.env.ENV = "development";
+
+    const request = new NextRequest(
+      `${apiUrl}/api/test2/test-request-registry`,
+      {
+        method: "GET",
+      }
+    );
+
+    const response = await app.GET(request);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ method: "GET" });
   });
 });

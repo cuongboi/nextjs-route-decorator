@@ -5,7 +5,11 @@ import { METADATA_KEYS } from "./metadata";
 import type { HTTP_METHOD } from "next/dist/server/web/http";
 import type { InjectionToken, Provider } from "tsyringe";
 import type { TypeOf, ZodTypeAny } from "zod";
-import type { TagObject, OpenAPIObject } from "openapi3-ts/oas30";
+import type {
+  TagObject,
+  OpenAPIObject,
+  SecuritySchemeObject,
+} from "openapi3-ts/oas30";
 
 type ResultType = string | object | number | void;
 
@@ -32,11 +36,17 @@ export type MetadataValue<T extends MetadataKey> = T extends "module"
           ? RouteMiddleware[]
           : any | any[];
 
+export type RequestRegistry = {
+  token: InjectionToken;
+  loader: (request: NextRequest) => MaybePromise<unknown>;
+};
+
 export interface ModuleOption {
   controllers?: Array<Function>;
   imports?: Array<Function>;
   registry?: ModuleRegistry[];
   prefix?: `/${string}`;
+  requestRegistry?: RequestRegistry[];
 }
 
 export type BaseConfig = {
@@ -49,7 +59,10 @@ export type SwaggerConfig = {
   info?: OpenAPIObject["info"];
   path: `/${string}`;
   openapi?: "3.0.0";
-} & Omit<OpenAPIObject, "info" | "openapi" | "paths">;
+  security?: {
+    [key: string]: SecuritySchemeObject;
+  };
+} & Omit<OpenAPIObject, "info" | "openapi" | "paths" | "security">;
 
 // Route Hook Configuration
 
@@ -146,6 +159,7 @@ export type RouteHandler = {
   target: Object;
   methodName: string | symbol;
   matchPath?: `/${string}`;
+  requestRegistry?: RequestRegistry[];
 };
 
 export type RouteResult = {
